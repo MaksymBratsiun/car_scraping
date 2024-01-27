@@ -9,28 +9,40 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as ec
 
 
-def processed_price(input_price):
-    res = input_price.split('$')[0].replace(' ', '')
-    return int(res)
+def scrap_price(driver):
+    try:
+        div_element = driver.find_element(By.XPATH, '/html//div[@class="price_value"]').text
+    except Exception as e:
+        div_element = '0$'
+        print('Failure price')
+    price_usd = div_element.split('$')[0].replace(' ', '')
+    return int(price_usd)
 
 
-def processed_odometer(input_odometer):
-    res = input_odometer.split('тис')[0].replace(' ', '')
-    return int(res)*1000
+def scrap_odometer(driver):
+    try:
+        div_element = driver.find_element(By.XPATH, '/html//div[@class="base-information bold"]').text
+    except Exception as e:
+        div_element = '0 тис'
+        print('Failure odometer')
+    odometer = div_element.split('тис')[0].replace(' ', '')
+    return int(odometer)*1000
 
 
 #TODO
-def processed_img_count(input_count):
-    count_img = input_count.strip().split(' ')
+def scrap_img_count(driver):
+    try:
+        div_element = driver.find_element(By.XPATH, '/html//div[@class="action_disp_all_block"]').text
+    except Exception as e:
+        div_element = '0 0 0 0'
+        print('Failure img count')
+    count_img = div_element.strip().split(' ')
     return int(count_img[2])
 
 
-def scrap_image(driver, target_url):
-
-    driver.get(target_url)
+def scrap_image(driver):
     div_element = driver.find_element(By.XPATH, '/html//div[@class="photo-620x465 loaded"]')
     img_element = div_element.find_element(By.XPATH, './/img')
     src_value = img_element.get_attribute('src')
@@ -38,33 +50,42 @@ def scrap_image(driver, target_url):
 
 
 #TODO
-def scrap_phone(driver, target_url):
-    driver.get(target_url)
+def scrap_phone(driver):
     phone_element = driver.find_element(By.XPATH, '/html//span[@class="mhide"]').text
     return phone_element
 
 
 #TODO
-def scrap_car_number(driver, target_url):
-
-    driver.get(target_url)
-
-    # div_element = driver.find_element(By.XPATH, '/html//span[@class="state-num ua"]')
-    # res = div_element.text
-    return "Can't scrap"
-
-
-#TODO
-def scrap_vin(driver, target_url):
-
-    driver.get(target_url)
-
+def scrap_vin_number(driver):
     try:
         vin = driver.find_element(By.XPATH, '/html//span[@class="vin-code"]').text
     except Exception as e:
-        vin_element = driver.find_element(By.XPATH, '/html//span[@class="label-vin"]').text
-        vin = vin_element
-    return vin
+        print('Failure vin')
+        vin = driver.find_element(By.XPATH, '/html//span[@class="label-vin"]').text
+
+    try:
+        number = driver.find_element(By.XPATH, '/html//span[@class="state-num ua"]').text
+    except Exception as e:
+        number = "no number"
+
+    return vin, number
+
+
+def scrap_username(driver):
+    try:
+        div_element = driver.find_element(By.XPATH, '/html//div[@class="seller_info_name bold"]').text
+    except Exception as e:
+        div_element = 'Can`t scrap'
+        print('Failure individual username')
+
+    try:
+        div_element = driver.find_element(By.XPATH, '/html//h4[@class="seller_info_name"]').text
+    except Exception as e:
+        div_element = 'Can`t scrap'
+        print('Failure company username')
+
+    username = div_element.strip()
+    return username
 
 
 def scrap_offer(target_url):
@@ -80,19 +101,16 @@ def scrap_offer(target_url):
     options.add_argument('--headless=chrome')
 
     with webdriver.Chrome(service=service, options=options) as driver:
-        image_url = scrap_image(driver, target_url)
-        phone_number = scrap_phone(driver, target_url)
-        car_number = scrap_car_number(driver, target_url)
-        car_vin = scrap_vin(driver, target_url)
-
-    response = requests.get(target_url)
-    soup = BeautifulSoup(response.text, 'lxml')
-
-    title = soup.find('h1', class_='head').text.strip()
-    price_usd = processed_price(soup.find('div', class_='price_value').text)
-    odometer = processed_odometer(soup.find('div', class_='base-information bold').text)
-    username_ = soup.find('div', class_='seller_info_name bold').text.strip()
-    images_count = processed_img_count(soup.find('div', class_='action_disp_all_block').text)
+        driver.get(target_url)
+        WebDriverWait(driver, 3)
+        title = driver.find_element(By.XPATH, '/html//h1[@class="head"]').text.strip()
+        price_usd = scrap_price(driver)
+        odometer = scrap_odometer(driver)
+        username = scrap_username(driver)
+        phone_number = scrap_phone(driver)
+        image_url = scrap_image(driver)
+        images_count = scrap_img_count(driver)
+        car_vin, car_number = scrap_vin_number(driver)
     datetime_found = datetime.date.today()
 
     return {
@@ -100,7 +118,7 @@ def scrap_offer(target_url):
         'title': title,
         'price_usd': price_usd,
         'odometer': odometer,
-        'username': username_,
+        'username': username,
         'phone_number': phone_number,
         'image_url': image_url,
         'images_count': images_count,

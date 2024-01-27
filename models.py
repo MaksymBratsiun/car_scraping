@@ -19,7 +19,7 @@ class Offers(Base):
     image_url = Column(String(255))
     images_count = Column(Integer)
     car_number = Column(String(12))
-    car_vin = Column(Integer)
+    car_vin = Column(String(17))
     datetime_found = Column(Date, nullable=False)
 
 
