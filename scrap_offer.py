@@ -77,12 +77,12 @@ def scrap_username(driver):
     except Exception as e:
         div_element = 'Can`t scrap'
         print('Failure individual username')
-
-    try:
-        div_element = driver.find_element(By.XPATH, '/html//h4[@class="seller_info_name"]').text
-    except Exception as e:
-        div_element = 'Can`t scrap'
-        print('Failure company username')
+    if div_element == 'Can`t scrap':
+        try:
+            div_element = driver.find_element(By.XPATH, '/html//h4[@class="seller_info_name"]').text
+        except Exception as e:
+            div_element = 'Can`t scrap'
+            print('Failure company username')
 
     username = div_element.strip()
     return username
@@ -112,6 +112,7 @@ def scrap_offer(target_url):
         images_count = scrap_img_count(driver)
         car_vin, car_number = scrap_vin_number(driver)
     datetime_found = datetime.date.today()
+    # datetime_found = datetime.date.today() - datetime.timedelta(days=1)
 
     return {
         'url': target_url,
