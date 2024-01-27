@@ -2,13 +2,20 @@ import datetime
 import os
 import platform
 
-
-from bs4 import BeautifulSoup
-import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+
+
+def path_driver():
+    if platform.system() == 'Windows':
+        res = os.path.join(os.getcwd(), 'drivers', 'chromedriver_win32', 'chromedriver.exe')
+    elif platform.system() == 'Linux':
+        res = os.path.join(os.getcwd(), 'drivers', 'chromedriver_linux64', 'chromedriver.exe')
+    else:
+        res = None
+    return res
 
 
 def scrap_price(driver):
@@ -31,7 +38,6 @@ def scrap_odometer(driver):
     return int(odometer)*1000
 
 
-#TODO
 def scrap_img_count(driver):
     try:
         div_element = driver.find_element(By.XPATH, '/html//div[@class="action_disp_all_block"]').text
@@ -43,25 +49,46 @@ def scrap_img_count(driver):
 
 
 def scrap_image(driver):
-    div_element = driver.find_element(By.XPATH, '/html//div[@class="photo-620x465 loaded"]')
-    img_element = div_element.find_element(By.XPATH, './/img')
-    src_value = img_element.get_attribute('src')
+    try:
+        div_element = driver.find_element(By.XPATH, '/html//div[@class="photo-620x465 loaded"]')
+        img_element = div_element.find_element(By.XPATH, './/img')
+        src_value = img_element.get_attribute('src')
+    except Exception as e:
+        print('Failure img')
+        src_value = None
+
+    if not src_value:
+        try:
+            div_element = driver.find_element(By.XPATH, '/html//div[@class="video-stories"]')
+            if div_element:
+                src_value = 'video without url'
+            else:
+                src_value = 'without url'
+        except Exception as e:
+            print('failure img')
+            src_value = 'without url'
+
     return src_value
 
 
-#TODO
 def scrap_phone(driver):
     phone_element = driver.find_element(By.XPATH, '/html//span[@class="mhide"]').text
     return phone_element
 
 
-#TODO
 def scrap_vin_number(driver):
     try:
         vin = driver.find_element(By.XPATH, '/html//span[@class="vin-code"]').text
     except Exception as e:
         print('Failure vin')
-        vin = driver.find_element(By.XPATH, '/html//span[@class="label-vin"]').text
+        vin = None
+
+    if not vin:
+        try:
+            vin = driver.find_element(By.XPATH, '/html//span[@class="label-vin"]').text
+        except Exception as e:
+            print('Failure vin')
+            vin = 'without vin'
 
     try:
         number = driver.find_element(By.XPATH, '/html//span[@class="state-num ua"]').text
@@ -89,14 +116,7 @@ def scrap_username(driver):
 
 
 def scrap_offer(target_url):
-    if platform.system() == 'Windows':
-        path_driver = os.path.join(os.getcwd(), 'drivers', 'chromedriver_win32', 'chromedriver.exe')
-    elif platform.system() == 'Linux':
-        path_driver = os.path.join(os.getcwd(), 'drivers', 'chromedriver_linux64', 'chromedriver.exe')
-    else:
-        path_driver = None
-
-    service = Service(path_driver)
+    service = Service(path_driver())
     options = webdriver.ChromeOptions()
     options.add_argument('--headless=chrome')
 
@@ -111,8 +131,8 @@ def scrap_offer(target_url):
         image_url = scrap_image(driver)
         images_count = scrap_img_count(driver)
         car_vin, car_number = scrap_vin_number(driver)
-    datetime_found = datetime.date.today()
-    # datetime_found = datetime.date.today() - datetime.timedelta(days=1)
+    # datetime_found = datetime.date.today()
+    datetime_found = datetime.date.today() - datetime.timedelta(days=1)
 
     return {
         'url': target_url,

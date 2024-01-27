@@ -1,41 +1,28 @@
 import os
-import platform
 from datetime import date, timedelta
 
 from connect_db import session
 from models import Offers
-
 
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as ec
 
-from scrap_offer import scrap_offer
+from scrap_offer import scrap_offer, path_driver
 
 load_dotenv()
 
 URL = os.environ.get('SITE_URL')
-PAGE = 3
-
-# URL = "https://auto.ria.com/uk/auto_ford_ecosport_35940791.html"
-# URL = "https://auto.ria.com/uk/auto_bmw_x6_35935575.html"
-# URL = "https://auto.ria.com/uk/auto_nissan_tiida_35841097.html"
+START_PAGE = os.environ.get('START_PAGE')
+END_PAGE = os.environ.get('END_PAGE')
 
 
-def scrap_site(input_url):
+def scrap_page(input_url):
     offers = []
 
-    if platform.system() == 'Windows':
-        path_driver = os.path.join(os.getcwd(), 'drivers', 'chromedriver_win32', 'chromedriver.exe')
-    elif platform.system() == 'Linux':
-        path_driver = os.path.join(os.getcwd(), 'drivers', 'chromedriver_linux64', 'chromedriver.exe')
-    else:
-        path_driver = None
-
-    service = Service(path_driver)
+    service = Service(path_driver())
     options = webdriver.ChromeOptions()
     options.add_argument('--headless=chrome')
 
@@ -46,6 +33,28 @@ def scrap_site(input_url):
         for link in urls:
             offers.append(link.get_attribute('href'))
     return offers
+
+
+def scrap_site(site_url=URL, start_page=START_PAGE, end_page=END_PAGE):
+    count_page = start_page
+    previous_urls = get_previous_urls()
+    exit_flag = False
+    while previous_page_exists(count_page):
+        if END_PAGE and count_page > end_page:
+            print('end page found -', end_page)
+            break
+        target_url = f'{site_url}/?page={count_page}'
+        for url in scrap_page(target_url):
+            print('page', count_page, 'url', url)
+            if url not in previous_urls:
+                add_to_db(scrap_offer(url))
+            else:
+                print('duplicate found')
+                exit_flag = True
+                break
+        if exit_flag:
+            break
+        count_page += 1
 
 
 def get_previous_urls():
@@ -73,16 +82,24 @@ def add_to_db(data):
     session.commit()
 
 
-if __name__ == '__main__':
-    target_url = f'{URL}/?page={PAGE}'
-    previous_urls = get_previous_urls()
-    for url in scrap_site(target_url):
-        if url not in previous_urls:
-            add_to_db(scrap_offer(url))
-        else:
-            print('duplicate found')
-            break
-    # for i, v in scrap_offer(URL).items():
-    #     print(i, ': ', v)
-    #
+def previous_page_exists(input_page):
+    input_url = f'{URL}/?page={input_page}'
+    service = Service(path_driver())
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless=chrome')
 
+    with webdriver.Chrome(service=service, options=options) as driver:
+        driver.get(input_url)
+        WebDriverWait(driver, 5)
+        try:
+            res = driver.find_element(By.XPATH, '/html//a[@class ="page-link js-next "]')
+            print('next page exists')
+            result = True
+        except Exception as e:
+            print('next page not exists')
+            result = False
+    return result
+
+
+if __name__ == '__main__':
+    scrap_site()
