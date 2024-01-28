@@ -21,10 +21,11 @@ def path_driver():
 def scrap_price(driver):
     try:
         div_element = driver.find_element(By.XPATH, '/html//div[@class="price_value"]').text
+        price_usd = div_element.split('$')[0].replace(' ', '')
     except Exception as e:
-        div_element = '0$'
+        price_usd = '0'
         print('Failure price')
-    price_usd = div_element.split('$')[0].replace(' ', '')
+
     return int(price_usd)
 
 
@@ -131,8 +132,8 @@ def scrap_offer(target_url):
         image_url = scrap_image(driver)
         images_count = scrap_img_count(driver)
         car_vin, car_number = scrap_vin_number(driver)
-    # datetime_found = datetime.date.today()
-    datetime_found = datetime.date.today() - datetime.timedelta(days=1)
+    datetime_found = datetime.date.today()
+    # datetime_found = datetime.date.today() - datetime.timedelta(days=1)
 
     return {
         'url': target_url,

@@ -1,23 +1,34 @@
 import os
-from datetime import date, timedelta
+import time
+import datetime
 
-from connect_db import session
-from models import Offers
-
+import schedule
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+from sqlalchemy import text
+from contextlib import closing
+import psycopg2
 
+from connect_db import session
+from models import Offers
 from scrap_offer import scrap_offer, path_driver
 
 load_dotenv()
 
 URL = os.environ.get('SITE_URL')
-START_PAGE = os.environ.get('START_PAGE')
-END_PAGE = os.environ.get('END_PAGE')
+DUMP_DIR = 'dumps'
+START_PAGE = int(os.environ.get('START_PAGE'))
+END_PAGE = int(os.environ.get('END_PAGE'))
 
+username = os.environ.get('POSTGRES_USER')
+password = os.environ.get('POSTGRES_PASSWORD')
+port = os.environ.get('POSTGRES_PORT')
+host = os.environ.get('POSTGRES_HOST')
+db_name = os.environ.get('POSTGRES_DB_NAME')
+container = os.environ.get('POSTGRES_CONTAINER')
 
 def scrap_page(input_url):
     offers = []
@@ -38,7 +49,6 @@ def scrap_page(input_url):
 def scrap_site(site_url=URL, start_page=START_PAGE, end_page=END_PAGE):
     count_page = start_page
     previous_urls = get_previous_urls()
-    exit_flag = False
     while previous_page_exists(count_page):
         if END_PAGE and count_page > end_page:
             print('end page found -', end_page)
@@ -48,18 +58,11 @@ def scrap_site(site_url=URL, start_page=START_PAGE, end_page=END_PAGE):
             print('page', count_page, 'url', url)
             if url not in previous_urls:
                 add_to_db(scrap_offer(url))
-            else:
-                print('duplicate found')
-                exit_flag = True
-                break
-        if exit_flag:
-            break
         count_page += 1
 
 
-def get_previous_urls():
-    previous_day = date.today() - timedelta(days=1)
-    res_query = session.query(Offers.url).select_from(Offers).where(Offers.datetime_found == previous_day).all()
+def get_previous_urls(days=1):
+    res_query = session.query(Offers.url).select_from(Offers).all()
     result = [i[0] for i in res_query]
     return result
 
@@ -101,5 +104,22 @@ def previous_page_exists(input_page):
     return result
 
 
+def make_dump():
+    backup_file_name = f"backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.sql"
+    backup_file_path = os.path.join(os.getcwd(), DUMP_DIR, backup_file_name)
+    try:
+        with closing(psycopg2.connect(dbname=db_name, user=username, password=password, host=host, port=port)) as conn:
+            command = f"docker exec -i {container} pg_dump -U {username} " \
+                      f"-h {host} -p {port} -F c -b -v -d {db_name} > {backup_file_path}"
+            os.system(command)
+    except Exception as e:
+        print(f"failure dump: {e}")
+
+
 if __name__ == '__main__':
-    scrap_site()
+    schedule.every().day.at("08:40").do(make_dump)
+    schedule.every().day.at("08:42").do(scrap_site)
+    while True:
+        print(datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S'))
+        schedule.run_pending()
+        time.sleep(10)
