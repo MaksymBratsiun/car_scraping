@@ -1,6 +1,5 @@
 import os
 import time
-import datetime
 
 import schedule
 from dotenv import load_dotenv
@@ -8,31 +7,30 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-from sqlalchemy import text
-from contextlib import closing
-import psycopg2
 
-from connect_db import session
-from models import Offers
+
 from scrap_offer import scrap_offer, path_driver
+from db_utils import add_to_db, get_previous_urls, make_dump
 
 load_dotenv()
 
 URL = os.environ.get('SITE_URL')
-DUMP_DIR = 'dumps'
 START_PAGE = int(os.environ.get('START_PAGE'))
 END_PAGE = int(os.environ.get('END_PAGE'))
+ACTIVATE_TIME = os.environ.get('ACTIVATE_TIME')
 
-username = os.environ.get('POSTGRES_USER')
-password = os.environ.get('POSTGRES_PASSWORD')
-port = os.environ.get('POSTGRES_PORT')
-host = os.environ.get('POSTGRES_HOST')
-db_name = os.environ.get('POSTGRES_DB_NAME')
-container = os.environ.get('POSTGRES_CONTAINER')
 
 def scrap_page(input_url):
-    offers = []
+    """
+    The scrap_page function takes in an url and returns a list of urls for each offer on the page.
+        Args:
+            input_url (str): The url to be scraped.
 
+    :param input_url: Get the url of the page we want to scrap
+    :return: A list of urls
+    :doc-author: Trelent
+    """
+    offers = []
     service = Service(path_driver())
     options = webdriver.ChromeOptions()
     options.add_argument('--headless=chrome')
@@ -46,7 +44,22 @@ def scrap_page(input_url):
     return offers
 
 
-def scrap_site(site_url=URL, start_page=START_PAGE, end_page=END_PAGE):
+def scrap_site(site_url, start_page=1, end_page=None):
+    """
+    The scrap_site function scrapes the site for all offers.
+    It takes three arguments:
+        - site_url (str): The url of the website to be scraped.
+        - start_page (int): The page number from which scraping should begin. Default is 1, i.e., first page of results
+        on the website's search engine; if None, it will scrape from first page onwards until no more pages are found or
+         end_page is reached; if a positive integer n &gt; 1, it will scrape starting with that specific result page
+         and continue until no more pages are found or end_page is reached; if a
+
+    :param site_url: Specify the site to be scraped
+    :param start_page: Set the page number from which we start scraping
+    :param end_page: Set the maximum number of pages to be scraped
+    :return: None
+    :doc-author: Trelent
+    """
     count_page = start_page
     previous_urls = get_previous_urls()
     while previous_page_exists(count_page):
@@ -61,31 +74,17 @@ def scrap_site(site_url=URL, start_page=START_PAGE, end_page=END_PAGE):
         count_page += 1
 
 
-def get_previous_urls(days=1):
-    res_query = session.query(Offers.url).select_from(Offers).all()
-    result = [i[0] for i in res_query]
-    return result
-
-
-def add_to_db(data):
-    offer = Offers(
-        url=data.get('url'),
-        title=data.get('title'),
-        price_usd=data.get('price_usd'),
-        odometer=data.get('odometer'),
-        username=data.get('username'),
-        phone_number=data.get('phone_number'),
-        image_url=data.get('image_url'),
-        images_count=data.get('images_count'),
-        car_number=data.get('car_number'),
-        car_vin=data.get('car_vin'),
-        datetime_found=data.get('datetime_found')
-        )
-    session.add(offer)
-    session.commit()
-
-
 def previous_page_exists(input_page):
+    """
+    The previous_page_exists function takes in a page number and returns True if the previous page exists,
+        False otherwise.
+        It does this by checking for the existence of an element with class 'page-link js-next' on the input_url.
+        If it finds that element, it returns True; if not, it returns False.
+
+    :param input_page: Navigate to the page that we want to check if it exists or not
+    :return: True if the next page exists and false if it does not
+    :doc-author: Trelent
+    """
     input_url = f'{URL}/?page={input_page}'
     service = Service(path_driver())
     options = webdriver.ChromeOptions()
@@ -93,33 +92,31 @@ def previous_page_exists(input_page):
 
     with webdriver.Chrome(service=service, options=options) as driver:
         driver.get(input_url)
-        WebDriverWait(driver, 5)
+        WebDriverWait(driver, 3)
         try:
-            res = driver.find_element(By.XPATH, '/html//a[@class ="page-link js-next "]')
+            result = bool(driver.find_element(By.XPATH, '/html//a[@class ="page-link js-next "]'))
             print('next page exists')
-            result = True
         except Exception as e:
             print('next page not exists')
             result = False
     return result
 
 
-def make_dump():
-    backup_file_name = f"backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.sql"
-    backup_file_path = os.path.join(os.getcwd(), DUMP_DIR, backup_file_name)
-    try:
-        with closing(psycopg2.connect(dbname=db_name, user=username, password=password, host=host, port=port)) as conn:
-            command = f"docker exec -i {container} pg_dump -U {username} " \
-                      f"-h {host} -p {port} -F c -b -v -d {db_name} > {backup_file_path}"
-            os.system(command)
-    except Exception as e:
-        print(f"failure dump: {e}")
+def main():
+    """
+    The main function scrapes the site and creates a dump of the data.
+
+
+    :return: None
+    :doc-author: Trelent
+    """
+    make_dump()
+    scrap_site(site_url=URL, start_page=START_PAGE, end_page=END_PAGE)
 
 
 if __name__ == '__main__':
-    schedule.every().day.at("08:40").do(make_dump)
-    schedule.every().day.at("08:42").do(scrap_site)
+    # scrap_site(site_url=URL, start_page=1, end_page=3)
+    schedule.every().day.at(ACTIVATE_TIME).do(main)
     while True:
-        print(datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S'))
         schedule.run_pending()
         time.sleep(10)
