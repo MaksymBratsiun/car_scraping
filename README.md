@@ -1,4 +1,4 @@
-# Car Scraping
+# Cars Scraping
 # Task:
 Scraping site via Selenium.
 
@@ -53,7 +53,8 @@ Wait next activating time for dump and starts again.
 pip install -r requirements.txt
 ```
 - create '.env' file with credentials and set settings (sample names in '.env.example').
-- run main.py for start script
+- run in terminal: `alembic upgrade head` -> implementation current models to DB
+- run main.py for start 
 ```bash
 python  main.py
 ```
