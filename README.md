@@ -1,32 +1,67 @@
-# car_scraping
+# Car Scraping
+# Task:
+Scraping site via Selenium.
 
-Задача:
-Нужно создать приложение для периодического скрапинга платформы AutoRia, а именно б/у авто (ссылка на стартовую страницу которую можно внести хардкодом).
-Приложение должно запускаться каждый день в указанное в настройках время(например 12:00) и проходить по всем страницам начиная со стартовой страницы и до конца, заходя в каждую карточку авто и выполнять сбор данных.
+You need to create an application for periodic scraping of the AutoRia platform (a link can be hardcoded).
+The application should be launched every day at the time specified in the settings (for example, 12:00)
+and go through all pages from the start page to the end, going into each car card and saving data to database.
 
-Условия:
-Все данные должны сохраняться в базе данных - PostgreSQL.
-Отсутствие дублей.
-Приложение должно выполнять ежедневный дамп базы данных в указанное в настройках время(например 12:00) и хранить файлы дампа в папке “dumps”, которая должна находится в корневой папке приложения.
-В качестве пакетного менеджера использовать pip.
-Настройки приложения должны храниться в файле .env
-В папке приложения должен быть файл Readme.md с описанием структуры и шагами запуска приложения.
-Готовое тестовое отправить в формате ссылки на GitHub.
+Conditions:
+- All data must be stored in a PostgreSQL database.
+- No duplicates.
+- The application should perform a daily database dump at the time specified in the settings (for example, 12:00) 
+and store the dump files in the “dumps” folder, which should be located in the root folder of the application.
+- Use pip as a package manager.
+- Application settings should be stored in a .env file
+- The application folder should contain a Readme.md file with a description of the structure and steps to launch the application.
+- Send the finished test as a link to GitHub.
 
-Дополнительно: 
-Приложение и база данных разворачиваются с помощью docker-compose.
-Логирование.
+Database fields:
+- url (string)
+- title (string)
+- price_usd (integer, $)
+- odometer (integer, km)
+- username (string)
+- phone_number (string)
+- image_url (string)
+- images_count (string)
+- car_number (string)
+- car_vin (string)
+- datetime_found (date)
+
+# Overview
+This repository contains Python scripts for scraping data from car sales site with daily period. 
+The script is waiting activating time and start save dump database. 
+After that it starts to scan first page of target site and finds all individual links of cars.
+If link is not in database it scraps needed fields and save to database.
+After all linksi script finds the next page and repeats. 
+If it finds the end page or not finds next it finish scraps. 
+Wait next activating time for dump and starts again.
 
 
-Поля базы данных:
-url (строка)
-title (строка)
-price_usd (число)
-odometer (число, нужно перевести 95 тыс. в 95000 и записать как число)
-username (строка)
-phone_number (число, пример структуры: +38063……..)
-image_url (строка)
-images_count (число)
-car_number (строка)
-car_vin (строка)
-datetime_found (дата сохранения в базу)
+# Requirements
+- Python 3.10
+- Selenium
+- SQLAlchemy 2.0
+- Alembic
+- Other dependencies (install using "pip install -r requirements.txt")
+
+# Usage:
+- update project from Git
+- create virtual environment 
+```bash
+pip install -r requirements.txt
+```
+- create '.env' file with credentials and set settings (sample names in '.env.example').
+- run main.py for start script
+```bash
+python  main.py
+```
+- wait for the activation time when the database dump starts and scraping begins.
+
+# Recommendation: 
+- The start page is 1
+- The end page is bigger than the start page
+- The end page can be None for scraping all pages 
+- 1 cars page is scraping about 10 seconds and 10 per page. So it is equal 1400 pages per day with target 30 000 pages
+- Dump tested only for docker container of postgresql
