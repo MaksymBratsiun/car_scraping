@@ -73,6 +73,27 @@ def add_to_db(data):
     session.commit()
 
 
+def add_all_to_db(data_list):
+    offers_list = []
+    for data in data_list:
+        offer = Offers(
+            url=data.get('url'),
+            title=data.get('title'),
+            price_usd=data.get('price_usd'),
+            odometer=data.get('odometer'),
+            username=data.get('username'),
+            phone_number=data.get('phone_number'),
+            image_url=data.get('image_url'),
+            images_count=data.get('images_count'),
+            car_number=data.get('car_number'),
+            car_vin=data.get('car_vin'),
+            datetime_found=data.get('datetime_found')
+            )
+        offers_list.append(offer)
+    session.add_all(offers_list)
+    session.commit()
+
+
 def get_previous_urls():
     """
     The get_previous_urls function returns a list of all the URLs that have been scraped in the past.

@@ -8,7 +8,6 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 
-
 from scrap_offer import scrap_offer, path_driver
 from db_utils import add_to_db, get_previous_urls, make_dump
 
@@ -62,7 +61,7 @@ def scrap_site(site_url, start_page=1, end_page=None):
     """
     count_page = start_page
     previous_urls = get_previous_urls()
-    while previous_page_exists(count_page):
+    while next_page_exists(count_page):
         if END_PAGE and count_page > end_page:
             print('end page found -', end_page)
             break
@@ -74,15 +73,13 @@ def scrap_site(site_url, start_page=1, end_page=None):
         count_page += 1
 
 
-def previous_page_exists(input_page):
+def next_page_exists(input_page):
     """
-    The previous_page_exists function takes in a page number and returns True if the previous page exists,
-        False otherwise.
-        It does this by checking for the existence of an element with class 'page-link js-next' on the input_url.
-        If it finds that element, it returns True; if not, it returns False.
+    The next_page_exists function takes in a page number and returns True if there is a next page, False otherwise.
+    It does this by checking for the existence of an element with class 'page-link js-next' on the input_url.
 
-    :param input_page: Navigate to the page that we want to check if it exists or not
-    :return: True if the next page exists and false if it does not
+    :param input_page: Determine the page number of the url
+    :return: True if there is a next page, false otherwise
     :doc-author: Trelent
     """
     input_url = f'{URL}/?page={input_page}'
@@ -115,8 +112,12 @@ def main():
 
 
 if __name__ == '__main__':
-    # scrap_site(site_url=URL, start_page=1, end_page=3)
-    schedule.every().day.at(ACTIVATE_TIME).do(main)
-    while True:
-        schedule.run_pending()
-        time.sleep(10)
+    time_start = time.time()
+    print("Start common")
+    scrap_site(site_url=URL, start_page=1, end_page=2)
+    print("time common: ", time.time() - time_start)
+
+    # schedule.every().day.at(ACTIVATE_TIME).do(main)
+    # while True:
+    #     schedule.run_pending()
+    #     time.sleep(10)
