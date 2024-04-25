@@ -22,7 +22,6 @@ END_PAGE = int(os.environ.get('END_PAGE'))
 ACTIVATE_TIME = os.environ.get('ACTIVATE_TIME')
 THREADS = 10
 
-
 def scrap_page(input_url):
 
     """
@@ -154,7 +153,7 @@ def main():
 if __name__ == "__main__":
     # time_start = time.time()
     # print("Start async")
-    # scrap_site(site_url=URL, start_page=1, end_page=2)
+    # scrap_site(site_url=URL, start_page=1, end_page=3)
     # print("time async: ", time.time() - time_start)
 
     schedule.every().day.at(ACTIVATE_TIME).do(main)

@@ -1,11 +1,27 @@
 import datetime
 import os
 import platform
+from pprint import pprint
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+
+
+TITLE_XPATH = '/html//h1'
+PRICE_XPATH = '/html//div[@class="price_value"]'
+PRICE_ADD_XPATH = '/html//div[@class="price_value price_value--additional"]'
+ODOMETER_XPATH = '/html//div[@class="base-information bold"]'
+IMG_COUNT_XPATH = '/html//div[@class="action_disp_all_block"]'
+IMG_XPATH = '/html//div[@class="photo-620x465 loaded"]'
+PHONE_XPATH = '/html//span[@class="phone bold"]'
+PHONE_CONV_XPATH = '/html//span[@class="conversion_phone_newcars"]'
+VIN_CODE_XPATH = '/html//span[@class="vin-code"]'
+VIN_LABEL_XPATH = '/html//span[@class="label-vin"]'
+NUMBER_XPATH = '/html//span[@class="state-num ua"]'
+SELLER_NAME_DIV_XPATH = '/html//div[@class="seller_info_name bold"]'
+SELLER_NAME_H4_XPATH = '/html//h4[@class="seller_info_name"]'
 
 
 def path_driver():
@@ -37,11 +53,18 @@ def scrap_price(driver):
     :return: The price of the product in usd
     :doc-author: Trelent
     """
-    div_element = driver.find_element(By.XPATH, '/html//div[@class="price_value"]').text
+    price_usd = 0
     try:
-        price_usd = int(div_element.split('$')[0].replace(' ', ''))
+        div_element = driver.find_element(By.XPATH, PRICE_XPATH).text
+        if '$' in div_element:
+            price_usd = int(div_element.split('$')[0].replace(' ', ''))
+        else:
+            div_element = driver.find_element(By.XPATH, PRICE_ADD_XPATH).text
+            div_element = div_element.split('•')
+            for element in div_element:
+                if "$" in element:
+                    price_usd = element.split('$')[0].replace(' ', '')
     except Exception as e:
-        price_usd = 0
         print('Failure price')
 
     return price_usd
@@ -58,12 +81,17 @@ def scrap_odometer(driver):
     :return: The odometer value in kilometers
     :doc-author: Trelent
     """
+    div_element = '0 тис'
     try:
-        div_element = driver.find_element(By.XPATH, '/html//div[@class="base-information bold"]').text
+        div_element = driver.find_element(By.XPATH, ODOMETER_XPATH).text
     except Exception as e:
-        div_element = '0 тис'
         print('Failure odometer')
-    odometer = div_element.split('тис')[0].replace(' ', '')
+    try:
+        odometer = div_element.split('тис')[0].replace(' ', '')
+    except Exception as e:
+        odometer = 0
+    if odometer.isalpha():
+        odometer = 0
     return int(odometer)*1000
 
 
@@ -78,7 +106,7 @@ def scrap_img_count(driver):
     :doc-author: Trelent
     """
     try:
-        div_element = driver.find_element(By.XPATH, '/html//div[@class="action_disp_all_block"]').text
+        div_element = driver.find_element(By.XPATH, IMG_COUNT_XPATH).text
     except Exception as e:
         div_element = '0'
         print('Failure img count')
@@ -101,7 +129,7 @@ def scrap_image(driver):
     :doc-author: Trelent
     """
     try:
-        div_element = driver.find_element(By.XPATH, '/html//div[@class="photo-620x465 loaded"]')
+        div_element = driver.find_element(By.XPATH, IMG_XPATH)
         img_element = div_element.find_element(By.XPATH, './/img')
         src_value = img_element.get_attribute('src')
     except Exception as e:
@@ -124,47 +152,74 @@ def scrap_image(driver):
 
 def scrap_phone(driver):
     """
-    The scrap_phone function takes in a driver object and returns the phone number of the business.
-        Args:
-            driver (object): A Selenium webdriver object.
+    The scrap_phone function takes a driver as an argument and returns the phone number of the restaurant.
+        The function first tries to find the popup element that contains the phone number, then clicks on it.
+        If successful, it will return a string containing only digits (no spaces or dashes). Otherwise, None is returned.
 
-    :param driver: Pass the driver object to the function
-    :return: The phone number of the business
+    :param driver: Access the web page
+    :return: The phone number of the restaurant
     :doc-author: Trelent
     """
-
-    phone_element = driver.find_element(By.XPATH, '/html//span[@class="mhide"]').text
-    return phone_element
-
-
-def scrap_vin_number(driver):
-    """
-    The scrap_vin_number function scrapes the vin number and state number from a car's page.
-        Args:
-            driver (selenium webdriver): The selenium webdriver object that is used to scrape the data.
-
-    :param driver: Find the elements in the html code
-    :return: A tuple, which is a list of two elements: vin and number
-    :doc-author: Trelent
-    """
+    phone = None
     try:
-        vin = driver.find_element(By.XPATH, '/html//span[@class="vin-code"]').text
+        popup = driver.find_element(By.XPATH, PHONE_XPATH)
+        driver.execute_script("arguments[0].click();", popup)
+        webdriver.ActionChains(driver).move_to_element(popup).click(popup).perform()
+        phone = popup.text
     except Exception as e:
-        print('Failure vin')
-        vin = None
+        print('Failute phone')
+    if not phone:
+        try:
+            popup = driver.find_element(By.XPATH, PHONE_CONV_XPATH)
+            driver.execute_script("arguments[0].click();", popup)
+            webdriver.ActionChains(driver).move_to_element(popup).click(popup).perform()
+            phone = popup.text
+        except Exception as e:
+            phone = 'without phone'
+            print('Failute phone')
+    return phone
 
+
+def scrap_vin(driver):
+    """
+    The scrap_vin function scrapes the VIN code from a given car's webpage.
+        Args:
+            driver (selenium webdriver): The selenium webdriver object that is used to scrape the page.
+
+    :param driver: Access the web page
+    :return: The vin code of the car
+    :doc-author: Trelent
+    """
+
+    vin = None
+    try:
+        vin = driver.find_element(By.XPATH, VIN_CODE_XPATH).text
+    except Exception as e:
+        print('Failure vin-code')
     if not vin:
         try:
-            vin = driver.find_element(By.XPATH, '/html//span[@class="label-vin"]').text
+            vin = driver.find_element(By.XPATH, VIN_LABEL_XPATH).text
         except Exception as e:
-            print('Failure vin')
+            print('Failure vin-label')
             vin = 'without vin'
+    return vin
 
+
+def scrap_number(driver):
+    """
+    The scrap_number function takes in a driver object and returns the number of the restaurant.
+      If there is no number, it will return &quot;no number&quot;.
+
+    :param driver: Pass the driver object to the function
+    :return: The number of the restaurant
+    :doc-author: Trelent
+    """
     try:
-        number = driver.find_element(By.XPATH, '/html//span[@class="state-num ua"]').text
+
+      number = driver.find_element(By.XPATH, NUMBER_XPATH).text
     except Exception as e:
         number = "no number"
-    return vin, number
+    return number
 
 
 def scrap_username(driver):
@@ -179,13 +234,13 @@ def scrap_username(driver):
     :doc-author: Trelent
     """
     try:
-        div_element = driver.find_element(By.XPATH, '/html//div[@class="seller_info_name bold"]').text
+        div_element = driver.find_element(By.XPATH, SELLER_NAME_DIV_XPATH).text
     except Exception as e:
         div_element = 'Can`t scrap'
         print('Failure individual username')
     if div_element == 'Can`t scrap':
         try:
-            div_element = driver.find_element(By.XPATH, '/html//h4[@class="seller_info_name"]').text
+            div_element = driver.find_element(By.XPATH, SELLER_NAME_H4_XPATH).text
         except Exception as e:
             div_element = 'Can`t scrap'
             print('Failure company username')
@@ -220,14 +275,15 @@ def scrap_offer(target_url):
     with webdriver.Chrome(service=service, options=options) as driver:
         driver.get(target_url)
         WebDriverWait(driver, 3)
-        title = driver.find_element(By.XPATH, '/html//h1[@class="head"]').text.strip()
+        title = driver.find_element(By.XPATH, TITLE_XPATH).text.strip()
         price_usd = scrap_price(driver)
         odometer = scrap_odometer(driver)
         username = scrap_username(driver)
-        phone_number = scrap_phone(driver)
         image_url = scrap_image(driver)
         images_count = scrap_img_count(driver)
-        car_vin, car_number = scrap_vin_number(driver)
+        car_vin = scrap_vin(driver)
+        car_number = scrap_number(driver)
+        phone_number = scrap_phone(driver)
     datetime_found = datetime.date.today()
     # datetime_found = datetime.date.today() - datetime.timedelta(days=1)
 
@@ -244,3 +300,6 @@ def scrap_offer(target_url):
         'car_vin': car_vin,
         'datetime_found': datetime_found
         }
+
+
+# pprint(scrap_offer('https://auto.ria.com/uk/auto_mercedes_benz_s_class_36118969.html'))

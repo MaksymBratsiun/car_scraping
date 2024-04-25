@@ -1,10 +1,10 @@
-# Cars Scraping
+# Used Cars Scraping
 # Task:
 Scraping site via Selenium.
 
 You need to create an application for periodic scraping of the AutoRia platform (a link can be hardcoded).
 The application should be launched every day at the time specified in the settings (for example, 12:00)
-and go through all pages from the start page to the end, going into each car card and saving data to database.
+and go through all pages from the start page to the end, going into each used car card and saving data to database.
 
 Conditions:
 - All data must be stored in a PostgreSQL database.

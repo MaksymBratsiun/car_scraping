@@ -17,7 +17,7 @@ URL = os.environ.get('SITE_URL')
 START_PAGE = int(os.environ.get('START_PAGE'))
 END_PAGE = int(os.environ.get('END_PAGE'))
 ACTIVATE_TIME = os.environ.get('ACTIVATE_TIME')
-
+NEW_AUTO = 'newauto'
 
 def scrap_page(input_url):
     """
@@ -68,7 +68,7 @@ def scrap_site(site_url, start_page=1, end_page=None):
         target_url = f'{site_url}/?page={count_page}'
         for url in scrap_page(target_url):
             print('page', count_page, 'url', url)
-            if url not in previous_urls:
+            if url not in previous_urls and NEW_AUTO not in url:
                 add_to_db(scrap_offer(url))
         count_page += 1
 
@@ -112,12 +112,12 @@ def main():
 
 
 if __name__ == '__main__':
-    time_start = time.time()
-    print("Start common")
-    scrap_site(site_url=URL, start_page=1, end_page=2)
-    print("time common: ", time.time() - time_start)
+    # time_start = time.time()
+    # print("Start common")
+    # scrap_site(site_url=URL, start_page=1, end_page=2)
+    # print("time common: ", time.time() - time_start)
 
-    # schedule.every().day.at(ACTIVATE_TIME).do(main)
-    # while True:
-    #     schedule.run_pending()
-    #     time.sleep(10)
+    schedule.every().day.at(ACTIVATE_TIME).do(main)
+    while True:
+        schedule.run_pending()
+        time.sleep(10)
