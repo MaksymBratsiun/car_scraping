@@ -1,7 +1,6 @@
 import datetime
 import os
 import platform
-from pprint import pprint
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -300,6 +299,3 @@ def scrap_offer(target_url):
         'car_vin': car_vin,
         'datetime_found': datetime_found
         }
-
-
-# pprint(scrap_offer('https://auto.ria.com/uk/auto_mercedes_benz_s_class_36118969.html'))
